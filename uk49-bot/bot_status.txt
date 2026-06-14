@@ -1,0 +1,28 @@
+import time
+import os
+
+# Check if bot is running by checking process
+print("Checking bot status...")
+print("Bot PID: 8668 (from earlier)")
+print()
+print("Please try the following:")
+print()
+print("1. Send /start to @Predictionukbot on Telegram")
+print("2. Wait 10 seconds")
+print("3. If no response, check:")
+print("   - Is the bot blocked?")
+print("   - Try deleting the chat and starting fresh")
+print("   - Make sure you have internet connection")
+print()
+print("If the bot still doesn't respond, the issue might be:")
+print("- The model name is wrong (qwen-3.7-turbo might not be supported)")
+print("- The API key is invalid")
+print()
+print("To check if the bot received your message:")
+print("1. Open Telegram")
+print("2. Go to @Predictionukbot")
+print("3. Send /start")
+print("4. Check if you see 'typing...' indicator")
+print()
+print("If you see 'typing...' but no response, it's an API issue.")
+print("If you don't see 'typing...', the bot is not receiving your message.")
