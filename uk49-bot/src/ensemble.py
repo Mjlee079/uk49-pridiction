@@ -136,7 +136,7 @@ def run_ensemble(
 
 Top 15 candidates by ensemble score: {candidates_str}
 
-Generate exactly 10 rows of 3 numbers each. Rules:
+Generate exactly 5 rows of 2 numbers each. Rules:
 1. Numbers must be between 1-49, no duplicates within a row
 2. Mix high, medium, and low-scoring candidates for diversity
 3. Each row should be different combinations
@@ -144,7 +144,7 @@ Generate exactly 10 rows of 3 numbers each. Rules:
 
 Return only this JSON:
 {{
-  "predictions": [ [n1, n2, n3], [n4, n5, n6], ... (10 rows total) ],
+  "predictions": [ [n1, n2], [n3, n4], [n5, n6], [n7, n8], [n9, n10] ],
   "top_candidates": [ {{ "number": n, "score": 0.XX }} ]
 }}
 """
@@ -200,26 +200,23 @@ def _fallback_predictions(top_candidates: List[Dict[str, Any]]) -> List[List[int
     import random
     numbers = [c["number"] for c in top_candidates]
     
-    # Ensure we have at least 10 unique numbers
+    # Ensure we have at least 10 unique numbers for 5 rows of 2
     if len(numbers) < 10:
-        # Add random numbers from 1-49
         available = [n for n in range(1, 50) if n not in numbers]
         numbers.extend(random.sample(available, min(10 - len(numbers), len(available))))
     
     predictions = []
     used = set()
-    for i in range(10):
-        # Pick 3 numbers, trying to avoid reuse in same row
+    for i in range(5):
         row = []
         candidates = [n for n in numbers if n not in used]
-        if len(candidates) < 3:
+        if len(candidates) < 2:
             candidates = numbers
         
-        row = random.sample(candidates, min(3, len(candidates)))
-        if len(row) < 3:
-            # Fill with random
+        row = random.sample(candidates, min(2, len(candidates)))
+        if len(row) < 2:
             available = [n for n in range(1, 50) if n not in row]
-            row.extend(random.sample(available, 3 - len(row)))
+            row.extend(random.sample(available, 2 - len(row)))
         
         predictions.append(sorted(row))
         used.update(row)
@@ -238,16 +235,16 @@ def _parse_ensemble_response(text: str) -> Tuple[List[List[int]], List[Dict[str,
             predictions = data.get("predictions", [])
             top_candidates = data.get("top_candidates", [])
 
-            # Validate predictions
+            # Validate predictions (expect 5 rows of 2 numbers)
             valid = []
             for row in predictions:
-                if isinstance(row, list) and len(row) == 3:
+                if isinstance(row, list) and len(row) == 2:
                     nums = [int(n) for n in row if 1 <= int(n) <= 49]
-                    if len(nums) == 3 and len(set(nums)) == 3:
+                    if len(nums) == 2 and len(set(nums)) == 2:
                         valid.append(nums)
 
-            if len(valid) != 10:
-                logger.warning("Ensemble returned %d valid rows, expected 10", len(valid))
+            if len(valid) != 5:
+                logger.warning("Ensemble returned %d valid rows, expected 5", len(valid))
 
             return valid, top_candidates
     except Exception as e:
@@ -262,7 +259,7 @@ def format_telegram_output(predictions: List[List[int]]) -> str:
     Returns multi-line string with numbered rows.
     """
     lines = []
-    for i, row in enumerate(predictions[:10], start=1):
+    for i, row in enumerate(predictions[:5], start=1):
         nums = " - ".join(f"{n:02d}" for n in row)
         lines.append(f"{i}. {nums}")
     return "\n".join(lines)

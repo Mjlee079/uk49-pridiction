@@ -110,10 +110,9 @@ def get_performance_summary() -> str:
 🎯 Total Predictions Evaluated: {total}
 
 ✅ Accuracy Breakdown:
-  • All 3 correct: {all_3} ({(all_3/total*100):.1f}%)
-  • At least 2 correct: {at_least_2} ({(at_least_2/total*100):.1f}%)
+  • All 2 correct: {all_3} ({(all_3/total*100):.1f}%)
   • At least 1 correct: {at_least_1} ({(at_least_1/total*100):.1f}%)
-  • Average matches: {avg_matches:.1f}/3
+  • Average matches: {avg_matches:.1f}/2
 
 🧠 Learning Status:
   • Bot is actively learning from each draw

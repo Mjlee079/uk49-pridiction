@@ -10,7 +10,7 @@ System Prompt must be injected on every LLM call.
 # =============================================================================
 # 0. SYSTEM PROMPT — Base Identity
 # =============================================================================
-SYSTEM_PROMPT = """You are a UK49s lottery prediction analyst. You analyze draw history using statistical patterns, sequences, frequency analysis, gap theory, Markov chains, co-occurrence correlation, and positional probability. You never guess randomly — every prediction is derived from data. You always return exactly 10 rows of 3 numbers each, where all numbers are between 1 and 49 with no duplicates within a row."""
+SYSTEM_PROMPT = """You are a UK49s lottery prediction analyst. You analyze draw history using statistical patterns, sequences, frequency analysis, gap theory, Markov chains, co-occurrence correlation, and positional probability. You never guess randomly — every prediction is derived from data. You always return exactly 5 rows of 2 numbers each, where all numbers are between 1 and 49 with no duplicates within a row."""
 
 # =============================================================================
 # 1. Prompt 1 — Frequency & Gap Analysis
@@ -120,14 +120,14 @@ Rules:
 2. Do NOT let any single signal dominate - if one weight exceeds 0.40 cap it at 0.40 and redistribute
 3. Avoid selecting numbers that are trending_down in the LSTM signal unless their other scores are exceptionally high
 4. Prioritize numbers that appear in at least 3 of the 5 signals top 20 candidates
-5. Each row of 3 must have internal coherence - mix hot, due, and trending numbers rather than picking the top 3 ranked numbers for every row
+5. Each row of 2 must have internal coherence - mix hot, due, and trending numbers rather than picking the top 2 ranked numbers for every row
 6. You may also consider numbers 1-49 that are not in the top 20 if they have strong positional or co-occurrence patterns
 
-Generate exactly 10 rows of 3 numbers. No duplicates within a row. Numbers must be between 1-49.
+Generate exactly 5 rows of 2 numbers. No duplicates within a row. Numbers must be between 1-49.
 
 Return only this JSON:
 {{
-  "predictions": [ [n1, n2, n3], ... ],
+  "predictions": [ [n1, n2], [n3, n4], [n5, n6], [n7, n8], [n9, n10] ],
   "top_candidates": [ {{ "number": n, "score": 0.XX, "signals_agreed": 3 }} ]
 }}
 """
@@ -173,18 +173,19 @@ Return only this JSON:
 # =============================================================================
 # 7. Prompt 7 — /predict Command Formatter
 # =============================================================================
-PROMPT_7_FORMAT = """Given these 10 prediction rows for the next UK49s draw: {predictions}
+PROMPT_7_FORMAT = """Given these 5 prediction rows for the next UK49s draw: {predictions}
 
 Format them cleanly for a Telegram message.
-Each row on its own line, numbered 1-10.
+Each row on its own line, numbered 1-5.
 Numbers separated by dashes.
 No extra commentary, no disclaimers.
 
 Example format:
-1. 05 - 18 - 33
-2. 07 - 22 - 41
-3. 11 - 29 - 44
-...
+1. 05 - 18
+2. 07 - 22
+3. 11 - 29
+4. 33 - 41
+5. 44 - 49
 """
 
 # =============================================================================
