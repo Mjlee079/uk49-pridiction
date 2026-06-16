@@ -6,6 +6,7 @@ import asyncio
 from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
+from telegram import Update
 
 # Load environment variables from .env file
 load_dotenv()
@@ -41,8 +42,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # Initialize Flask app
 app = Flask(__name__)
 
-# Global PTB application (for webhook processing)
+# Global PTB application and its event loop (for webhook processing)
 _ptb_application = None
+_ptb_loop = None
 
 
 @app.route("/")
@@ -72,17 +74,20 @@ def health():
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    """Receive Telegram webhook updates."""
-    global _ptb_application
-    if _ptb_application is None:
+    """Receive Telegram webhook updates and feed them to PTB."""
+    global _ptb_application, _ptb_loop
+    if _ptb_application is None or _ptb_loop is None:
         logger.error("Webhook received but PTB application not initialized")
         return jsonify({"status": "error", "message": "Bot not ready"}), 503
 
     try:
-        update = request.get_json(force=True)
+        update_data = request.get_json(force=True)
+        update = Update.de_json(update_data, _ptb_application.bot)
+
+        # Schedule the update processing on PTB's event loop
         asyncio.run_coroutine_threadsafe(
-            _ptb_application.update_queue.put(update),
-            _ptb_application._event_loop,
+            _ptb_application.process_update(update),
+            _ptb_loop,
         )
         return jsonify({"status": "ok"}), 200
     except Exception as e:
@@ -92,35 +97,36 @@ def webhook():
 
 def _run_ptb_in_thread():
     """Run the Telegram bot (PTB application) in a background thread."""
-    global _ptb_application
+    global _ptb_application, _ptb_loop
     from src.bot import create_application
     from src.security import get_key
-    import telegram
 
     logger.info("Starting Telegram PTB application in background thread...")
     _ptb_application = create_application()
 
-    # Start the application (creates event loop)
-    _ptb_application._event_loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(_ptb_application._event_loop)
+    # Create and set event loop
+    _ptb_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(_ptb_loop)
 
-    _ptb_application._event_loop.run_until_complete(_ptb_application.initialize())
-    _ptb_application._event_loop.run_until_complete(_ptb_application.start())
+    # Initialize and start the application
+    _ptb_loop.run_until_complete(_ptb_application.initialize())
+    _ptb_loop.run_until_complete(_ptb_application.start())
 
     # Set webhook on Telegram servers
     webhook_url = os.getenv("WEBHOOK_URL")
     if webhook_url:
         bot_url = f"{webhook_url}/webhook"
         logger.info(f"Setting webhook to: {bot_url}")
-        _ptb_application._event_loop.run_until_complete(
-            telegram.Bot(get_key("TELEGRAM_BOT_TOKEN")).set_webhook(url=bot_url)
+        _ptb_loop.run_until_complete(
+            _ptb_application.bot.set_webhook(url=bot_url)
         )
         logger.info("Webhook set successfully")
     else:
         logger.warning("WEBHOOK_URL not set — webhook will not be registered on Telegram")
 
     logger.info("Telegram bot ready (webhook mode)")
-    _ptb_application._event_loop.run_forever()
+    # Run the event loop forever
+    _ptb_loop.run_forever()
 
 
 def main():
