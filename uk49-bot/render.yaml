@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: uk49-lunchtime-bot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    envVarGroups:
+      - name: bot-secrets
+  - type: pserv
+    name: uk49-db
+    plan: free
+    env: postgresql
+    disk:
+      name: data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 1

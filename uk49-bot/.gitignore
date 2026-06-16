@@ -53,3 +53,8 @@ Thumbs.db
 
 # Render
 .render/
+
+# Local data (not needed in production — PostgreSQL is used)
+data/*.db
+data/*.db-journal
+

@@ -140,7 +140,7 @@ def scrape_draw_history(draw_type: str) -> int:
     for result in results:
         try:
             success = insert_draw(
-                draw_date=result["date"],
+                draw_date=result["draw_date"],
                 draw_time=result["draw_time"],
                 numbers=result["numbers"],
                 bonus=result["bonus"],

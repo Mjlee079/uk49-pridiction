@@ -1,344 +1,188 @@
-# UK49 Lunchtime AI Prediction Bot - Deployment Guide
+# UK49 Lunchtime AI Prediction Bot — Render Deployment Guide
 
-This guide walks you through deploying your UK49 Lunchtime Prediction Bot to the cloud for free.
+This guide covers deploying the bot to **Render.com free tier** with **PostgreSQL** (persistent storage) and **Telegram webhook mode**.
+
+---
 
 ## Table of Contents
+
 1. [Prerequisites](#prerequisites)
-2. [Local Setup & Testing](#local-setup--testing)
-3. [Cloud Deployment (Render.com - FREE)](#cloud-deployment-rendercom---free)
-4. [Telegram Bot Setup](#telegram-bot-setup)
-5. [API Keys Setup](#api-keys-setup)
-6. [Environment Variables](#environment-variables)
-7. [Monitoring & Logs](#monitoring--logs)
-8. [Troubleshooting](#troubleshooting)
+2. [Environment Variables](#environment-variables)
+3. [Step 1: Push Code to GitHub](#step-1-push-code-to-github)
+4. [Step 2: Create PostgreSQL on Render](#step-2-create-postgresql-on-render)
+5. [Step 3: Create Web Service](#step-3-create-web-service)
+6. [Step 4: Set Environment Variables](#step-4-set-environment-variables)
+7. [Step 5: Deploy](#step-5-deploy)
+8. [Step 6: Migrate Data (Optional)](#step-6-migrate-data-optional)
+9. [Step 7: Set Telegram Webhook](#step-7-set-telegram-webhook)
+10. [Step 8: Set Up Better Stack Monitoring](#step-8-set-up-better-stack-monitoring)
+11. [Commands Reference](#commands-reference)
+12. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Prerequisites
 
-Before you start, you'll need:
-- A GitHub account (free)
-- A Render.com account (free tier)
-- A Telegram account
+- A **GitHub** account
+- A **Render.com** account (free tier)
+- A **Telegram** account
 - API keys (see below)
-
----
-
-## Local Setup & Testing
-
-### Step 1: Clone and Setup
-
-```bash
-# Clone your repository (or create it)
-git clone <your-repo-url>
-cd uk49-bot
-
-# Create virtual environment
-python -m venv venv
-
-# Activate (Windows)
-venv\Scripts\activate
-
-# Activate (Mac/Linux)
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### Step 2: Configure Environment
-
-```bash
-# Copy the example env file
-cp .env.example .env
-
-# Edit .env with your API keys (see section below)
-```
-
-### Step 3: Run Initial Scrape
-
-```bash
-python -c "from src.database import init_db; init_db()"
-python -c "from src.scraper import run_full_scrape; run_full_scrape()"
-```
-
-### Step 4: Test the Bot Locally
-
-```bash
-python run.py
-```
-
-You should see:
-- Database initialization message
-- Historical scrape results
-- Scheduler starting
-- "Starting Telegram bot..." message
-
----
-
-## Cloud Deployment (Render.com - FREE)
-
-### Step 1: Push to GitHub
-
-```bash
-git init
-git add .
-git commit -m "Initial commit: UK49 Lunchtime Bot"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/uk49-bot.git
-git push -u origin main
-```
-
-### Step 2: Create Render Account
-
-1. Go to https://render.com
-2. Sign up with GitHub
-3. Click "New +" → "Web Service"
-4. Connect your GitHub repository
-
-### Step 3: Configure Render Service
-
-**Settings:**
-- **Name:** uk49-lunchtime-bot
-- **Region:** Frankfurt (EU) or closest to you
-- **Branch:** main
-- **Runtime:** Python 3
-- **Build Command:** `pip install -r requirements.txt`
-- **Start Command:** `python run.py`
-- **Plan:** Free
-
-**Environment Variables:**
-Click "Environment" tab and add:
-
-```
-TELEGRAM_BOT_TOKEN=your_token_here
-GROQ_API_KEY=your_groq_key_here
-CUSTOM_LLM_API_KEY=your_qwen_key_here  # Optional - your own Qwen API
-CUSTOM_LLM_BASE_URL=https://your-api-url.com/v1  # Optional
-RAPIDAPI_KEY=your_rapidapi_key_here  # Optional
-DATABASE_URL=data/uk49_lunchtime.db
-LLM_MODEL=qwen/qwen3-32b
-LOG_LEVEL=INFO
-```
-
-### Step 4: Deploy
-
-Click "Create Web Service"
-Render will:
-1. Build the Docker image
-2. Install dependencies
-3. Start the bot
-
-**Note:** Free tier spins down after 15 minutes of inactivity. The scheduler keeps it alive during the day.
-
-### Step 5: Keep Alive (IMPORTANT)
-
-Free web services sleep after 15 min. To keep your bot alive 24/7:
-
-**Option A: Use UptimeRobot (FREE)**
-1. Go to https://uptimerobot.com
-2. Add monitor → HTTP(s)
-3. URL: `https://your-render-url.onrender.com/health`
-4. Interval: 5 minutes
-5. This pings your service to keep it awake
-
-**Option B: Use Cron-Job.org (FREE)**
-1. Go to https://cron-job.org
-2. Create job to ping your Render URL every 10 minutes
-
----
-
-## Telegram Bot Setup
-
-### Step 1: Create Bot with BotFather
-
-1. Open Telegram and search for **@BotFather**
-2. Send `/newbot`
-3. Name your bot (e.g., "UK49 Predictor")
-4. Choose username (e.g., `uk49_lunchtime_bot`)
-5. **Copy the token** (looks like: `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
-
-### Step 2: Configure
-
-Paste the token in your `.env` file:
-```
-TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
-```
-
-### Step 3: Find Your User ID (for Admin)
-
-1. Search for **@userinfobot** in Telegram
-2. Start the bot
-3. It will reply with your user ID (e.g., `123456789`)
-4. Add to `.env`:
-```
-ADMIN_IDS=123456789
-```
-
----
-
-## API Keys Setup
-
-### Option 1: Groq API (FREE - Recommended)
-
-1. Go to https://console.groq.com
-2. Sign up with email/GitHub
-3. Go to "API Keys"
-4. Create new key
-5. **Copy the key**
-6. Paste in `.env`:
-```
-GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
-```
-
-**Groq Free Tier Limits:**
-- 300,000 tokens per minute
-- 1,000 requests per minute
-- More than enough for this bot
-
-### Option 2: Your Own Qwen API (if you have one)
-
-If you have a Qwen API key from DashScope/Alibaba:
-
-```bash
-CUSTOM_LLM_API_KEY=your-qwen-api-key-here
-CUSTOM_LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-LLM_MODEL=qwen-turbo  # or qwen-plus, qwen-max
-```
-
-### Option 3: RapidAPI (Optional - for live results)
-
-1. Go to https://rapidapi.com
-2. Sign up for free
-3. Search for "UK Lottery" or "49s"
-4. Subscribe to a free plan
-5. Copy your API key from dashboard
-6. Paste in `.env`:
-```
-RAPIDAPI_KEY=your-rapidapi-key-here
-```
-
-**Note:** The bot can work without RapidAPI by scraping bet49s.com directly.
+- A **Better Stack** account (free tier) — for monitoring/keep-alive
 
 ---
 
 ## Environment Variables
 
-Complete list of all environment variables:
-
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `TELEGRAM_BOT_TOKEN` | **YES** | Your Telegram bot token from @BotFather |
-| `GROQ_API_KEY` | *Optional* | Free Groq API key for Qwen AI |
-| `CUSTOM_LLM_API_KEY` | *Optional* | Your own Qwen/DashScope API key |
-| `CUSTOM_LLM_BASE_URL` | *Optional* | Base URL for custom LLM API |
-| `RAPIDAPI_KEY` | *Optional* | RapidAPI key for live results |
-| `DATABASE_URL` | No | SQLite path (default: `data/uk49_lunchtime.db`) |
-| `LLM_MODEL` | No | Model ID (default: `qwen/qwen3-32b`) |
-| `ADMIN_IDS` | No | Comma-separated Telegram user IDs |
-| `LOG_LEVEL` | No | Logging level (default: `INFO`) |
+| `DATABASE_URL` | **Auto** | Render auto-generates when you link PostgreSQL |
+| `TELEGRAM_BOT_TOKEN` | **Yes** | Your Telegram bot token from @BotFather |
+| `WEBHOOK_URL` | **Yes** | Your Render app URL (e.g., `https://uk49-bot.onrender.com`) |
+| `GROQ_API_KEY` | **Yes** | Free from https://console.groq.com |
+| `LLM_MODEL` | No | Default: `qwen/qwen3-32b` |
+| `ADMIN_IDS` | No | Your Telegram user ID (comma-separated) |
+| `DRAW_TIMEZONE` | No | Default: `Europe/London` |
+| `DRAW_TIME` | No | Default: `12:49` |
+| `PORT` | **Auto** | Render provides this (Flask binds to it) |
 
 ---
 
-## Monitoring & Logs
-
-### View Logs on Render
-
-1. Go to your service on Render dashboard
-2. Click "Logs" tab
-3. See real-time bot activity
-
-### Common Log Messages
-
-```
-✅ "Database initialized successfully"
-✅ "Scraped X new Lunchtime draws"
-✅ "Prediction X saved for YYYY-MM-DD"
-✅ "Accuracy updated for prediction X: Y/3 (Z%)"
-```
-
-### Health Check
-
-Add this endpoint to `src/bot.py` if using a web service with health checks:
-
-```python
-from flask import Flask
-app = Flask(__name__)
-
-@app.route('/health')
-def health():
-    return {'status': 'ok', 'draws': get_draw_count()}
-```
-
----
-
-## Troubleshooting
-
-### Bot Not Responding in Telegram
-
-**Problem:** Bot doesn't reply to commands
-**Solution:**
-1. Check Render logs for errors
-2. Verify `TELEGRAM_BOT_TOKEN` is correct
-3. Make sure you sent `/start` first
-4. Check if bot is blocked
-
-### "No LLM API configured" Error
-
-**Problem:** Predictions fail
-**Solution:**
-1. Get free Groq API key: https://console.groq.com
-2. Add `GROQ_API_KEY` to environment variables
-3. Redeploy
-
-### "No data in database" Error
-
-**Problem:** /predict or /stats shows no data
-**Solution:**
-1. Run `/scrape` command (admin only)
-2. Or wait for scheduler to run at 12:55 UK time
-3. Check Render logs for scraper errors
-
-### Service Goes to Sleep
-
-**Problem:** Bot stops responding after 15 minutes
-**Solution:**
-1. Set up UptimeRobot: https://uptimerobot.com
-2. Ping your Render URL every 5 minutes
-3. Or upgrade to Render paid plan ($7/month)
-
-### Scraping Errors
-
-**Problem:** bet49s.com blocks scraping
-**Solution:**
-1. The bot uses realistic User-Agent headers
-2. If blocked, increase delay between requests
-3. Consider using a proxy service
-
----
-
-## Security Best Practices
-
-1. ✅ **Never commit `.env` file** - It's in `.gitignore`
-2. ✅ **Never share API keys** - Keep them in environment variables only
-3. ✅ **Use Render Secret Files** - For production, use Render's secret file feature
-4. ✅ **Restrict Admin Commands** - Only your Telegram user ID can run /scrape
-5. ✅ **Enable Render Private Services** - If you don't need public URL
-
----
-
-## Updating the Bot
-
-To update after code changes:
+## Step 1: Push Code to GitHub
 
 ```bash
-# Make changes locally
+# Make sure your code is committed
 git add .
-git commit -m "Update: description"
+git commit -m "chore: production-ready for Render (PostgreSQL, webhook, monitoring)"
 git push origin main
-
-# Render will auto-deploy!
 ```
+
+---
+
+## Step 2: Create PostgreSQL on Render
+
+1. Go to https://dashboard.render.com
+2. Click **"New +"** → **"PostgreSQL"**
+3. **Name:** `uk49-db`
+4. **Plan:** Free
+5. Click **"Create Database"**
+6. Wait for it to be ready (green status)
+
+---
+
+## Step 3: Create Web Service
+
+1. Click **"New +"** → **"Web Service"**
+2. Connect your **GitHub repository**
+3. **Settings:**
+   - **Name:** `uk49-lunchtime-bot` (or your choice)
+   - **Region:** Pick closest to your users
+   - **Branch:** `main`
+   - **Runtime:** Python 3
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `python run.py`
+   - **Plan:** Free
+4. Click **"Create Web Service"**
+
+**Important:** Before the first deploy completes, link the PostgreSQL:
+- Go to your Web Service → **"Settings"**
+- Under **"Database"**, click **"Connect Database"**
+- Select the `uk49-db` you created
+- This auto-populates `DATABASE_URL`
+
+---
+
+## Step 4: Set Environment Variables
+
+Go to your Web Service → **"Environment"** tab and add:
+
+```
+TELEGRAM_BOT_TOKEN=your_token_here
+WEBHOOK_URL=https://your-app-name.onrender.com
+GROQ_API_KEY=your_groq_key_here
+LLM_MODEL=qwen/qwen3-32b
+ADMIN_IDS=your_telegram_user_id
+```
+
+**Note:** Replace `your-app-name` with your actual Render app name. You can get this after the first deploy.
+
+If you need to update `WEBHOOK_URL` after the first deploy:
+1. Deploy once (it will fail webhook setup, that's OK)
+2. Get the URL from the Render dashboard
+3. Set `WEBHOOK_URL` to that URL
+4. Redeploy
+
+---
+
+## Step 5: Deploy
+
+Render will auto-deploy after you set env vars. Check the **Logs** tab for:
+
+```
+✅ Database initialized successfully (PostgreSQL)
+✅ Starting Flask server on port 10000...
+✅ Webhook set successfully
+```
+
+If you see `WEBHOOK_URL not set`, set it and redeploy.
+
+---
+
+## Step 6: Migrate Data (Optional)
+
+If you have existing SQLite data locally and want to migrate it:
+
+### Option A: Run from Render Shell
+1. Go to your Web Service → **"Shell"** tab
+2. Upload your `data/uk49_lunchtime.db` and `data/state.json` files (use the shell's upload feature or `scp`)
+3. Run:
+```bash
+python migrate_to_postgres.py
+```
+
+### Option B: Run Locally
+1. Set your Render `DATABASE_URL` locally:
+```bash
+export DATABASE_URL=postgresql://user:pass@host:5432/dbname
+```
+2. Run the migration script:
+```bash
+python migrate_to_postgres.py
+```
+
+---
+
+## Step 7: Set Telegram Webhook
+
+The app auto-sets the webhook on startup if `WEBHOOK_URL` is set.
+
+**To verify:**
+- Visit: `https://api.telegram.org/bot<YOUR_TOKEN>/getWebhookInfo`
+- You should see your Render URL in the `url` field
+
+**To manually set (if needed):**
+```bash
+curl -X POST "https://api.telegram.org/bot<YOUR_TOKEN>/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://your-app-name.onrender.com/webhook"}'
+```
+
+---
+
+## Step 8: Set Up Better Stack Monitoring
+
+**Better Stack** (free tier) keeps your Render service alive and alerts you if it goes down.
+
+1. Go to https://betterstack.com
+2. Sign up for a free account
+3. Go to **"Monitors"** → **"Create Monitor"**
+4. **Settings:**
+   - **Name:** UK49 Bot Health
+   - **URL:** `https://your-app-name.onrender.com/health`
+   - **Check Interval:** 10 minutes
+   - **Expected Status Code:** 200
+5. Click **"Create Monitor"**
+
+This pings your `/health` endpoint every 10 minutes, keeping the Render service awake.
 
 ---
 
@@ -349,7 +193,7 @@ git push origin main
 | `/start` | Welcome message | Everyone |
 | `/help` | Show commands | Everyone |
 | `/predict` | Get 10 AI predictions | Everyone |
-| `/stats` | View analytics | Everyone |
+| `/stats` | View hot/cold numbers | Everyone |
 | `/history` | Prediction accuracy | Everyone |
 | `/last` | Latest draw result | Everyone |
 | `/scrape` | Manual result fetch | Admin only |
@@ -357,12 +201,63 @@ git push origin main
 
 ---
 
+## Troubleshooting
+
+### "Database not initialized"
+- Check Render logs for PostgreSQL connection errors
+- Verify `DATABASE_URL` is set correctly
+- Ensure the PostgreSQL instance is linked to the Web Service
+
+### "Webhook not set"
+- Check that `WEBHOOK_URL` is set to your exact Render app URL
+- Redeploy after setting the env var
+- Verify with `getWebhookInfo` (see Step 7)
+
+### Bot not responding
+- Check Render logs for errors
+- Verify `TELEGRAM_BOT_TOKEN` is correct
+- Test `/health` in browser: `https://your-app.onrender.com/health`
+
+### Service goes to sleep
+- Ensure Better Stack monitor is active (Step 8)
+- Check monitor logs in Better Stack dashboard
+- Render free tier sleeps after 15 min idle — pings prevent this
+
+### "No data in database"
+- The bot auto-scrapes on startup if empty
+- Or run `/scrape` (admin command) after the first deploy
+- Or migrate existing SQLite data (Step 6)
+
+---
+
+## Security
+
+- ✅ **Never commit `.env`** — it's in `.gitignore`
+- ✅ **Never share API keys** — keep them in Render env vars only
+- ✅ **Restrict admin commands** — only your Telegram ID can run `/scrape`
+- ✅ **Use Render Secret Files** — for additional sensitive data if needed
+
+---
+
+## Updating the Bot
+
+```bash
+# Make changes locally
+git add .
+git commit -m "Update: description"
+git push origin main
+
+# Render auto-deploys!
+```
+
+---
+
 ## Support
 
-If you encounter issues:
-1. Check Render logs first
-2. Verify all API keys are correct
-3. Make sure `.env` variables are set
-4. Check that database initialized properly
+If issues persist:
+1. Check Render logs
+2. Verify all env vars are set
+3. Test `/health` endpoint in browser
+4. Check Better Stack monitor status
 
-**Good luck with your predictions! 🎱**
+**Good luck with your predictions!**

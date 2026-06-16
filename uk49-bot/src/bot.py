@@ -439,7 +439,9 @@ def create_application() -> Application:
 
 
 def start_bot():
-    """Start the bot (polling mode)."""
+    """Start the bot (polling mode) — for local development only.
+    For production, use webhook mode via run.py.
+    """
     logger.info("Starting Telegram bot with security measures...")
     application = create_application()
     application.run_polling(drop_pending_updates=True)

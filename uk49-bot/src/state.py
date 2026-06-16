@@ -1,7 +1,7 @@
-"""UK49s Prediction Bot — Inline JSON State Persistence
+"""UK49s Prediction Bot — PostgreSQL-backed State Persistence
 
 Handles loading, saving, and updating of the bot's internal state.
-State file lives at data/state.json.
+State is persisted in PostgreSQL (bot_state table) instead of a JSON file.
 """
 
 import json
@@ -9,11 +9,9 @@ import os
 import logging
 from typing import Dict, List, Any
 from datetime import datetime
+from src.database import load_bot_state, save_bot_state
 
 logger = logging.getLogger(__name__)
-
-STATE_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
-STATE_PATH = os.path.join(STATE_DIR, "state.json")
 
 # Default weights per prompt specification
 DEFAULT_WEIGHTS = {
@@ -25,32 +23,23 @@ DEFAULT_WEIGHTS = {
 }
 
 
-def _ensure_dir():
-    os.makedirs(STATE_DIR, exist_ok=True)
-
-
 def load_state() -> Dict[str, Any]:
-    """Load state from JSON. Returns defaults if file missing."""
-    _ensure_dir()
-    if os.path.exists(STATE_PATH):
-        try:
-            with open(STATE_PATH, "r", encoding="utf-8") as f:
-                state = json.load(f)
-            logger.info("State loaded from %s", STATE_PATH)
-            # Ensure all required keys exist
-            if "signal_weights" not in state:
-                state["signal_weights"] = DEFAULT_WEIGHTS.copy()
-            if "last_correction" not in state:
-                state["last_correction"] = None
-            if "correction_history" not in state:
-                state["correction_history"] = []
-            if "prediction_history" not in state:
-                state["prediction_history"] = []
-            return state
-        except Exception as e:
-            logger.error("Failed to load state: %s", e)
+    """Load state from PostgreSQL. Returns defaults if not found."""
+    state = load_bot_state()
+    if state:
+        logger.info("State loaded from PostgreSQL")
+        # Ensure all required keys exist
+        if "signal_weights" not in state:
+            state["signal_weights"] = DEFAULT_WEIGHTS.copy()
+        if "last_correction" not in state:
+            state["last_correction"] = None
+        if "correction_history" not in state:
+            state["correction_history"] = []
+        if "prediction_history" not in state:
+            state["prediction_history"] = []
+        return state
 
-    logger.info("No state file found, initializing defaults")
+    logger.info("No state found in database, initializing defaults")
     return {
         "signal_weights": DEFAULT_WEIGHTS.copy(),
         "last_correction": None,
@@ -60,14 +49,9 @@ def load_state() -> Dict[str, Any]:
 
 
 def save_state(state: Dict[str, Any]):
-    """Persist state to JSON file."""
-    _ensure_dir()
-    try:
-        with open(STATE_PATH, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2)
-        logger.info("State saved to %s", STATE_PATH)
-    except Exception as e:
-        logger.error("Failed to save state: %s", e)
+    """Persist state to PostgreSQL."""
+    save_bot_state(state)
+    logger.info("State saved to PostgreSQL")
 
 
 def get_weights(state: Dict[str, Any] = None) -> Dict[str, float]:
