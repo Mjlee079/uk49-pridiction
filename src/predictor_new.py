@@ -229,7 +229,7 @@ def generate_predictions_pipeline(
 
     prediction_id = insert_prediction(
         predicted_for=today,
-        top_numbers=all_numbers[:2],  # First row as primary (2 numbers)
+        top_numbers=all_numbers[:3],  # First row as primary (3 numbers)
         confidence_scores=all_confidences,
         reasoning=ensemble_text[:2000],
         method_used=method_used,
