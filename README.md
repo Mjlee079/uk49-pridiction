@@ -15,7 +15,7 @@ An AI-powered Telegram bot that predicts UK49 Lunchtime lottery numbers using ad
 1. Clone and setup:
 ```bash
 git clone <repo-url>
-cd uk49-bot
+cd uk49-pridiction
 pip install -r requirements.txt
 cp .env.example .env
 ```
