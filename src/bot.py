@@ -69,7 +69,7 @@ I use advanced analytics, AI (Qwen model), and pattern recognition to predict UK
 1. I scrape historical UK49 Lunchtime results
 2. I analyze frequencies, gaps, co-occurrences, and trends
 3. I use AI (Qwen model) to identify patterns
-4. I generate 10 rows of top-3 predictions with confidence scores
+4. I generate 5 rows of top-2 predictions with confidence scores
 5. I learn from each draw to improve future predictions
 
 <i>Note: Lottery is random. Predictions are based on statistical patterns, not guarantees.</i>

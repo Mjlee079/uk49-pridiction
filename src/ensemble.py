@@ -1,7 +1,7 @@
 """UK49s Prediction Bot — Ensemble Orchestrator (Prompt 5)
 
 Feeds all 5 signal scores into the revised ensemble prompt (Prompt 5),
-sends to LLM, and parses the 10 rows of 3 numbers.
+sends to LLM, and parses the 5 rows of 2 numbers.
 """
 
 import logging
@@ -100,7 +100,7 @@ def run_ensemble(
         if hasattr(client, 'messages_create'):
             response = client.messages_create(
                 model=LLM_MODEL,
-                max_tokens=3000,
+                max_tokens=2000,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": prompt},
@@ -120,7 +120,7 @@ def run_ensemble(
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.5,
-                max_tokens=3000,
+                max_tokens=2000,
             )
             response_text = response.choices[0].message.content
 
@@ -143,33 +143,33 @@ def _fallback_predictions(frequency_gap_scores: Dict[str, float]) -> List[List[i
     """Generate prediction rows locally when LLM fails."""
     import random
     
-    # Sort by score and take top 30 for 10 rows of 3
+    # Sort by score and take top 10 for 5 rows of 2
     sorted_scores = sorted(frequency_gap_scores.items(), key=lambda x: x[1], reverse=True)
-    top_numbers = [int(n) for n, _ in sorted_scores[:30]]
+    top_numbers = [int(n) for n, _ in sorted_scores[:10]]
     
-    # Ensure we have at least 30 unique numbers
-    if len(top_numbers) < 30:
+    # Ensure we have at least 10 unique numbers
+    if len(top_numbers) < 10:
         available = [n for n in range(1, 50) if n not in top_numbers]
-        needed = 30 - len(top_numbers)
+        needed = 10 - len(top_numbers)
         top_numbers.extend(random.sample(available, min(needed, len(available))))
     
     predictions = []
     used = set()
-    for i in range(10):
+    for i in range(5):
         row = []
         candidates = [n for n in top_numbers if n not in used]
         
-        if len(candidates) < 3:
+        if len(candidates) < 2:
             # Reset used pool if running out
             used.clear()
             candidates = [n for n in top_numbers if n not in used]
         
-        if len(candidates) >= 3:
-            row = random.sample(candidates, 3)
+        if len(candidates) >= 2:
+            row = random.sample(candidates, 2)
         else:
             # Ultimate fallback: pick any available
             available = [n for n in range(1, 50) if n not in used]
-            row = random.sample(available, 3)
+            row = random.sample(available, 2)
         
         predictions.append(sorted(row))
         used.update(row)
@@ -178,7 +178,7 @@ def _fallback_predictions(frequency_gap_scores: Dict[str, float]) -> List[List[i
 
 
 def _parse_ensemble_response(text: str) -> Tuple[List[List[int]], List[Dict[str, Any]]]:
-    """Parse JSON from ensemble response. Expects 10 rows of 3 numbers."""
+    """Parse JSON from ensemble response. Expects 5 rows of 2 numbers."""
     try:
         start = text.find('{')
         end = text.rfind('}')
@@ -188,16 +188,16 @@ def _parse_ensemble_response(text: str) -> Tuple[List[List[int]], List[Dict[str,
             predictions = data.get("predictions", [])
             top_candidates = data.get("top_candidates", [])
 
-            # Validate predictions (expect 10 rows of 3 numbers)
+            # Validate predictions (expect 5 rows of 2 numbers)
             valid = []
             for row in predictions:
-                if isinstance(row, list) and len(row) == 3:
+                if isinstance(row, list) and len(row) == 2:
                     nums = [int(n) for n in row if 1 <= int(n) <= 49]
-                    if len(nums) == 3 and len(set(nums)) == 3:
+                    if len(nums) == 2 and len(set(nums)) == 2:
                         valid.append(nums)
 
-            if len(valid) != 10:
-                logger.warning("Ensemble returned %d valid rows, expected 10", len(valid))
+            if len(valid) != 5:
+                logger.warning("Ensemble returned %d valid rows, expected 5", len(valid))
 
             return valid, top_candidates
     except Exception as e:
@@ -209,10 +209,10 @@ def _parse_ensemble_response(text: str) -> Tuple[List[List[int]], List[Dict[str,
 def format_telegram_output(predictions: List[List[int]]) -> str:
     """
     Format predictions as clean Telegram message (Prompt 7).
-    Returns multi-line string with numbered rows 1-10.
+    Returns multi-line string with numbered rows 1-5.
     """
     lines = []
-    for i, row in enumerate(predictions[:10], start=1):
+    for i, row in enumerate(predictions[:5], start=1):
         nums = " - ".join(f"{n:02d}" for n in row)
         lines.append(f"{i}. {nums}")
     return "\n".join(lines)
