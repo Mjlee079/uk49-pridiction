@@ -3,11 +3,11 @@ services:
     name: uk49-lunchtime-bot
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
     startCommand: python run.py
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.11
     envVarGroups:
       - name: bot-secrets
   - type: pserv
