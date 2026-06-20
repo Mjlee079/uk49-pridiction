@@ -324,13 +324,20 @@ async def scrape_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             check_and_update_accuracy()
 
         else:
-            await thinking_msg.edit_text(
-                "⚠️ No new result found or already up to date."
+            error_text = (
+                "⚠️ <b>Scrape Failed</b>\n\n"
+                "Possible reasons:\n"
+                "• Website is temporarily down\n"
+                "• Website structure changed\n"
+                "• Network connection issue\n"
+                "• No new results available yet\n\n"
+                "Check Render logs for details or try again in a few minutes."
             )
+            await thinking_msg.edit_text(error_text, parse_mode="HTML")
 
     except Exception as e:
         error_msg = mask_sensitive_data(str(e))
-        logger.error(f"Scrape error: {error_msg}")
+        logger.error(f"Scrape error: {error_msg}", exc_info=True)
 
         # Log failed scrape
         log_scrape(
@@ -340,7 +347,13 @@ async def scrape_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             error=error_msg,
         )
 
-        await thinking_msg.edit_text(f"❌ Error: {error_msg}")
+        # Show more helpful error message
+        error_text = (
+            f"❌ <b>Scrape Error</b>\n\n"
+            f"<code>{error_msg}</code>\n\n"
+            f"Check Render logs for full details."
+        )
+        await thinking_msg.edit_text(error_text, parse_mode="HTML")
 
 
 async def admin_stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):

@@ -43,10 +43,11 @@ def fetch_and_update_job():
             save_state(state)
             logger.info("Self-correction and state save complete")
         else:
-            logger.info("No new result available yet")
+            logger.info("No new result available yet - this is normal if draw hasn't happened")
 
     except Exception as e:
-        logger.error(f"Scheduled job error: {e}")
+        logger.error(f"Scheduled job error: {e}", exc_info=True)
+        logger.error("Will retry on next scheduled run")
 
 
 def setup_scheduler() -> BackgroundScheduler:

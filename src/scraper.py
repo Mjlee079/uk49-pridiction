@@ -53,6 +53,7 @@ def extract_draw_results(soup: BeautifulSoup, panel_id: str, draw_type: str, dra
     panel = soup.find("div", {"id": panel_id})
     if not panel:
         logger.error(f"Could not find {draw_type} results panel (id='{panel_id}')")
+        logger.error(f"Available panel IDs: {[div.get('id') for div in soup.find_all('div', id=True)][:10]}")
         return results
 
     logger.info(f"Found {draw_type} panel, parsing results...")
@@ -60,6 +61,10 @@ def extract_draw_results(soup: BeautifulSoup, panel_id: str, draw_type: str, dra
     # Find all h6 elements (dates) within the panel
     h6_elements = panel.find_all("h6")
     logger.info(f"Found {len(h6_elements)} date entries in {draw_type}")
+
+    if len(h6_elements) == 0:
+        logger.warning(f"No date entries found in {draw_type} panel")
+        return results
 
     for h6 in h6_elements:
         # Parse date
@@ -149,7 +154,7 @@ def scrape_draw_history(draw_type: str) -> int:
             if success:
                 inserted_count += 1
         except Exception as e:
-            logger.error(f"Error inserting draw {result['date']}: {e}")
+            logger.error(f"Error inserting draw {result['draw_date']}: {e}")
 
     logger.info(f"Scraped {inserted_count} new {draw_type} draws")
     return inserted_count
@@ -167,39 +172,45 @@ def scrape_brunchtime_history() -> int:
 
 def scrape_latest_results(draw_type: str = "LUNCHTIME") -> Optional[Dict]:
     """Scrape only the latest result for a specific draw type."""
-    soup = fetch_page()
-    if not soup:
-        return None
-
-    if draw_type == "LUNCHTIME":
-        results = extract_lunchtime_results(soup)
-    elif draw_type == "BRUNCHTIME":
-        results = extract_brunchtime_results(soup)
-    else:
-        logger.error(f"Unknown draw type: {draw_type}")
-        return None
-
-    if not results:
-        logger.warning(f"No {draw_type} results found")
-        return None
-
-    # Return the first result (most recent)
-    latest = results[0]
-
-    # Insert into database
     try:
-        insert_draw(
-            draw_date=latest["draw_date"],
-            draw_time=latest["draw_time"],
-            numbers=latest["numbers"],
-            bonus=latest["bonus"],
-            draw_type=latest["draw_type"],
-        )
-        logger.info(f"Latest {draw_type} result: {latest['draw_date']} - {latest['numbers']} + {latest['bonus']}")
-    except Exception as e:
-        logger.error(f"Error inserting latest draw: {e}")
+        soup = fetch_page()
+        if not soup:
+            logger.error("Failed to fetch page - network error or site down")
+            return None
 
-    return latest
+        if draw_type == "LUNCHTIME":
+            results = extract_lunchtime_results(soup)
+        elif draw_type == "BRUNCHTIME":
+            results = extract_brunchtime_results(soup)
+        else:
+            logger.error(f"Unknown draw type: {draw_type}")
+            return None
+
+        if not results:
+            logger.warning(f"No {draw_type} results found - website structure may have changed")
+            return None
+
+        # Return the first result (most recent)
+        latest = results[0]
+
+        # Insert into database
+        try:
+            insert_draw(
+                draw_date=latest["draw_date"],
+                draw_time=latest["draw_time"],
+                numbers=latest["numbers"],
+                bonus=latest["bonus"],
+                draw_type=latest["draw_type"],
+            )
+            logger.info(f"Latest {draw_type} result: {latest['draw_date']} - {latest['numbers']} + {latest['bonus']}")
+        except Exception as e:
+            logger.error(f"Error inserting latest draw: {e}")
+
+        return latest
+
+    except Exception as e:
+        logger.error(f"Scrape latest results failed: {e}", exc_info=True)
+        return None
 
 
 def run_full_scrape():
